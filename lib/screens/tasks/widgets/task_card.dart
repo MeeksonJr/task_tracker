@@ -5,6 +5,7 @@ import '../../../models/task_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/task_provider.dart';
 import '../task_form_screen.dart';
+import '../task_detail_screen.dart';
 
 // card component displaying a single task
 class TaskCard extends ConsumerWidget {
@@ -25,6 +26,7 @@ class TaskCard extends ConsumerWidget {
 
     return Card(
       elevation: 0,
+      clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         side: BorderSide(
@@ -36,11 +38,20 @@ class TaskCard extends ConsumerWidget {
         ),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: InkWell(
+        // tap to open task details
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TaskDetailScreen(task: task),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -261,6 +272,7 @@ class TaskCard extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

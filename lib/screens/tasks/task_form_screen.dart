@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../models/task_model.dart';
+import '../../providers/attachment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/task_provider.dart';
+import '../../utils/image_picker_helper.dart';
 
 // screen to create or edit a task
 class TaskFormScreen extends ConsumerStatefulWidget {
@@ -25,6 +28,10 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
   String? _selectedAssigneeId;
   String? _selectedAssigneeName;
 
+  // existing remote URLs (from edit) + newly picked local files
+  final List<String> _existingUrls = [];
+  final List<File> _newFiles = [];
+
   bool get _isEditing => widget.taskToEdit != null;
 
   @override
@@ -39,6 +46,8 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
         task?.dueDate ?? DateTime.now().add(const Duration(days: 1));
     _selectedAssigneeId = task?.assigneeId;
     _selectedAssigneeName = task?.assigneeName;
+    // load existing attachment URLs when editing
+    if (task != null) _existingUrls.addAll(task.attachmentUrls);
   }
 
   @override
@@ -79,19 +88,40 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
     });
   }
 
-  // save task
+  // pick a new image from camera or gallery
+  Future<void> _pickImage() async {
+    final file = await ImagePickerHelper.pickImage(context);
+    if (file != null && mounted) {
+      setState(() => _newFiles.add(file));
+    }
+  }
+
+  // save task, uploading new attachments first
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
     final currentUser = ref.read(currentUserProfileProvider).value;
     if (currentUser == null) return;
 
-    // default assignee to creator if none selected
     final assigneeId = _selectedAssigneeId ?? currentUser.id;
     final assigneeName = _selectedAssigneeName ?? currentUser.displayName;
 
+    // create a placeholder task to get/use the ID for upload paths
+    final taskId = widget.taskToEdit?.id ?? '';
+
+    // upload any new local files
+    final uploadedUrls = <String>[];
+    for (final file in _newFiles) {
+      final url = await ref
+          .read(attachmentUploadProvider.notifier)
+          .upload(taskId: taskId.isNotEmpty ? taskId : 'tmp', file: file);
+      if (url != null) uploadedUrls.add(url);
+    }
+
+    final allUrls = [..._existingUrls, ...uploadedUrls];
+
     final task = Task(
-      id: widget.taskToEdit?.id ?? '',
+      id: taskId,
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim(),
       priority: _selectedPriority,
@@ -101,7 +131,7 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
       creatorName: widget.taskToEdit?.creatorName ?? currentUser.displayName,
       assigneeId: assigneeId,
       assigneeName: assigneeName,
-      attachmentUrls: widget.taskToEdit?.attachmentUrls ?? const [],
+      attachmentUrls: allUrls,
       createdAt: widget.taskToEdit?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -296,6 +326,27 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
                   loading: () => const LinearProgressIndicator(),
                   error: (err, _) => const Text('Could not load user list'),
                 ),
+                const SizedBox(height: 20),
+
+                // attachments section
+                Text(
+                  'Attachments',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _AttachmentGrid(
+                  existingUrls: _existingUrls,
+                  newFiles: _newFiles,
+                  onRemoveExisting: (url) {
+                    setState(() => _existingUrls.remove(url));
+                  },
+                  onRemoveNew: (file) {
+                    setState(() => _newFiles.remove(file));
+                  },
+                  onAdd: _pickImage,
+                ),
                 const SizedBox(height: 32),
 
                 // save button
@@ -321,6 +372,117 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// grid showing existing remote images + newly picked local images + add button
+class _AttachmentGrid extends StatelessWidget {
+  final List<String> existingUrls;
+  final List<File> newFiles;
+  final void Function(String url) onRemoveExisting;
+  final void Function(File file) onRemoveNew;
+  final VoidCallback onAdd;
+
+  const _AttachmentGrid({
+    required this.existingUrls,
+    required this.newFiles,
+    required this.onRemoveExisting,
+    required this.onRemoveNew,
+    required this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = existingUrls.length + newFiles.length;
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        // existing images (either local path or url)
+        for (final url in existingUrls)
+          _ThumbTile(
+            child: url.startsWith('http://') || url.startsWith('https://')
+                ? Image.network(url, fit: BoxFit.cover)
+                : Image.file(
+                    File(url),
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const Center(
+                      child: Icon(Icons.broken_image, size: 24),
+                    ),
+                  ),
+            onRemove: () => onRemoveExisting(url),
+          ),
+
+        // newly picked local images
+        for (final file in newFiles)
+          _ThumbTile(
+            child: Image.file(file, fit: BoxFit.cover),
+            onRemove: () => onRemoveNew(file),
+          ),
+
+        // add button — max 5 attachments
+        if (items < 5)
+          InkWell(
+            onTap: onAdd,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.add_photo_alternate_outlined),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// single thumbnail tile with a remove X button
+class _ThumbTile extends StatelessWidget {
+  final Widget child;
+  final VoidCallback onRemove;
+
+  const _ThumbTile({required this.child, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 72,
+      height: 72,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            child,
+            Positioned(
+              top: 2,
+              right: 2,
+              child: GestureDetector(
+                onTap: onRemove,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

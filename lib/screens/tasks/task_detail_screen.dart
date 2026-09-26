@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -53,6 +54,15 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen>
         ),
       );
     }
+  }
+
+  // open full-screen image viewer
+  void _openFullScreen(BuildContext context, List<String> urls, int index) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _FullScreenImageViewer(urls: urls, initialIndex: index),
+      ),
+    );
   }
 
   @override
@@ -288,6 +298,47 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen>
             ),
           ),
 
+          // attachment thumbnail strip (if any)
+          if (liveTask.attachmentUrls.isNotEmpty)
+            Container(
+              height: 80,
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: liveTask.attachmentUrls.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemBuilder: (ctx, i) {
+                  final url = liveTask.attachmentUrls[i];
+                  return GestureDetector(
+                    // open full-screen viewer on tap
+                    onTap: () => _openFullScreen(context, liveTask.attachmentUrls, i),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: url.startsWith('http://') || url.startsWith('https://')
+                          ? Image.network(
+                              url,
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.file(
+                              File(url),
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                width: 80,
+                                height: 80,
+                                color: Colors.grey.shade200,
+                                child: const Icon(Icons.broken_image, size: 24),
+                              ),
+                            ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
           // tab bar for Comments & Activity History
           TabBar(
             controller: _tabController,
@@ -522,6 +573,78 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// swipe-able full-screen image viewer
+class _FullScreenImageViewer extends StatefulWidget {
+  final List<String> urls;
+  final int initialIndex;
+
+  const _FullScreenImageViewer({
+    required this.urls,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_FullScreenImageViewer> createState() => _FullScreenImageViewerState();
+}
+
+class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
+  late final PageController _pageController;
+  late int _current;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.initialIndex;
+    _pageController = PageController(initialPage: _current);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text('${_current + 1} / ${widget.urls.length}'),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.urls.length,
+        onPageChanged: (i) => setState(() => _current = i),
+        itemBuilder: (ctx, i) => InteractiveViewer(
+          child: Center(
+            child: widget.urls[i].startsWith('http://') ||
+                    widget.urls[i].startsWith('https://')
+                ? Image.network(
+                    widget.urls[i],
+                    fit: BoxFit.contain,
+                    loadingBuilder: (ctx, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      );
+                    },
+                  )
+                : Image.file(
+                    File(widget.urls[i]),
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Center(
+                      child: Icon(Icons.broken_image, color: Colors.white, size: 48),
+                    ),
+                  ),
+          ),
+        ),
       ),
     );
   }

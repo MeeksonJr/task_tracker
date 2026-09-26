@@ -4,10 +4,13 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
 import 'screens/auth/auth_gate.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // setup local notifications and timezones
+  await NotificationService().init();
   runApp(const ProviderScope(child: TaskTrackerApp()));
 }
 

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../models/task_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/comment_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../providers/task_provider.dart';
 import 'task_form_screen.dart';
 
@@ -89,6 +90,27 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen>
       appBar: AppBar(
         title: const Text('Task Details'),
         actions: [
+          // send instant test reminder
+          IconButton(
+            tooltip: 'Send Test Reminder',
+            icon: const Icon(Icons.notifications_active_outlined),
+            onPressed: () async {
+              await ref.read(notificationServiceProvider).showInstantNotification(
+                    title: 'Task Reminder: ${liveTask.title}',
+                    body:
+                        'Priority: ${liveTask.priority.name.toUpperCase()} • Due: ${dateFormat.format(liveTask.dueDate)}',
+                    payload: liveTask.id,
+                  );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Test notification sent! Check notification bar.'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+          ),
           if (canManage)
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
@@ -266,6 +288,17 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen>
                             ),
                           ),
                         ),
+                        if (!liveTask.isCompleted && !liveTask.isOverdue) ...[
+                          const SizedBox(width: 4),
+                          Tooltip(
+                            message: 'Deadline reminder scheduled',
+                            child: Icon(
+                              Icons.notifications_active_outlined,
+                              size: 16,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 8),

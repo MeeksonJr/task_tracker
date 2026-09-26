@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/task_model.dart';
+import '../services/notification_service.dart';
 import '../services/task_service.dart';
 import 'auth_provider.dart';
+import 'notification_provider.dart';
+
 
 // task tabs for dashboard
 enum TaskTab {
@@ -133,11 +136,14 @@ class TaskController extends Notifier<AsyncValue<void>> {
   }
 
   TaskService get _service => ref.read(taskServiceProvider);
+  NotificationService get _notifications => ref.read(notificationServiceProvider);
 
   Future<bool> createTask(Task task) async {
     state = const AsyncValue.loading();
     try {
-      await _service.createTask(task);
+      final docId = await _service.createTask(task);
+      // schedule notification for the new task
+      await _notifications.scheduleTaskReminder(task.copyWith(id: docId));
       state = const AsyncValue.data(null);
       return true;
     } catch (e, st) {
@@ -150,6 +156,8 @@ class TaskController extends Notifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     try {
       await _service.updateTask(task);
+      // reschedule notification with updated due date/title
+      await _notifications.scheduleTaskReminder(task);
       state = const AsyncValue.data(null);
       return true;
     } catch (e, st) {
@@ -161,6 +169,14 @@ class TaskController extends Notifier<AsyncValue<void>> {
   Future<void> toggleTaskStatus(Task task) async {
     try {
       await _service.toggleTaskStatus(task);
+      // if completed, cancel reminder. If reopened, reschedule
+      if (task.isCompleted) {
+        await _notifications.scheduleTaskReminder(
+          task.copyWith(status: TaskStatus.todo),
+        );
+      } else {
+        await _notifications.cancelTaskReminder(task.id);
+      }
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -170,6 +186,8 @@ class TaskController extends Notifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     try {
       await _service.deleteTask(taskId);
+      // remove scheduled notification
+      await _notifications.cancelTaskReminder(taskId);
       state = const AsyncValue.data(null);
       return true;
     } catch (e, st) {

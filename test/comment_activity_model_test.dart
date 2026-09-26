@@ -31,7 +31,7 @@ void main() {
       expect(ActivityType.fromString('statusChanged'), ActivityType.statusChanged);
       expect(ActivityType.fromString('commentAdded'), ActivityType.commentAdded);
       expect(ActivityType.fromString('updated'), ActivityType.updated);
-      expect(ActivityType.fromString('unknown_type'), ActivityType.updated);
+      expect(ActivityType.fromString('unknown_type'), ActivityType.created);
     });
 
     test('TaskActivity serializes to and from map', () {

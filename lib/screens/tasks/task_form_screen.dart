@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../models/task_model.dart';
 import '../../providers/attachment_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/holiday_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../utils/image_picker_helper.dart';
 
@@ -27,6 +28,7 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
   late DateTime _selectedDueDate;
   String? _selectedAssigneeId;
   String? _selectedAssigneeName;
+  String? _holidayName;
 
   // existing remote URLs (from edit) + newly picked local files
   final List<String> _existingUrls = [];
@@ -46,8 +48,14 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
         task?.dueDate ?? DateTime.now().add(const Duration(days: 1));
     _selectedAssigneeId = task?.assigneeId;
     _selectedAssigneeName = task?.assigneeName;
+    _holidayName = task?.holidayName;
     // load existing attachment URLs when editing
     if (task != null) _existingUrls.addAll(task.attachmentUrls);
+
+    // check if initial due date lands on a public holiday
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkHolidayForDate(_selectedDueDate);
+    });
   }
 
   @override
@@ -86,6 +94,17 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
         pickedTime.minute,
       );
     });
+
+    // check public holiday for new date
+    _checkHolidayForDate(_selectedDueDate);
+  }
+
+  // check if selected date is a public holiday
+  Future<void> _checkHolidayForDate(DateTime date) async {
+    final holiday = await ref.read(holidayServiceProvider).checkHoliday(date);
+    if (mounted) {
+      setState(() => _holidayName = holiday?.name);
+    }
   }
 
   // pick a new image from camera or gallery
@@ -132,6 +151,7 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
       assigneeId: assigneeId,
       assigneeName: assigneeName,
       attachmentUrls: allUrls,
+      holidayName: _holidayName,
       createdAt: widget.taskToEdit?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -273,6 +293,42 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
                     ),
                   ),
                 ),
+
+                // holiday warning banner if date is a public holiday
+                if (_holidayName != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      border: Border.all(color: Colors.amber.shade400),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.beach_access,
+                          color: Colors.amber,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Public Holiday: $_holidayName',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.amber.shade900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
 
                 // assignee picker

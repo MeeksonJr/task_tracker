@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../models/task_model.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/holiday_provider.dart';
 import '../../../providers/task_provider.dart';
 import '../task_form_screen.dart';
 import '../task_detail_screen.dart';
@@ -238,6 +239,38 @@ class TaskCard extends ConsumerWidget {
                       ),
                     ],
                   ),
+                ),
+
+                // holiday chip if task due date is on a public holiday
+                Builder(
+                  builder: (context) {
+                    final holiday = task.holidayName ??
+                        ref.watch(holidayForDateProvider(task.dueDate)).value?.name;
+                    if (holiday == null) return const SizedBox.shrink();
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.amber.shade600, width: 0.5),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.beach_access, size: 12, color: Colors.amber),
+                          const SizedBox(width: 4),
+                          Text(
+                            holiday,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.amber.shade900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
 
                 // assignee chip

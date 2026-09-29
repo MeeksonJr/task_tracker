@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../models/task_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/comment_provider.dart';
+import '../../providers/holiday_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/task_provider.dart';
 import 'task_form_screen.dart';
@@ -300,6 +301,51 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen>
                           ),
                         ],
                       ],
+                    ),
+
+                    // holiday banner if due date falls on a public holiday
+                    Builder(
+                      builder: (context) {
+                        final holiday = liveTask.holidayName ??
+                            ref
+                                .watch(holidayForDateProvider(liveTask.dueDate))
+                                .value
+                                ?.name;
+                        if (holiday == null) return const SizedBox.shrink();
+                        return Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.amber.shade400),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.beach_access,
+                                size: 16,
+                                color: Colors.amber,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Public Holiday: $holiday',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.amber.shade900,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 8),
                     Row(

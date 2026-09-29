@@ -93,6 +93,7 @@ class Task {
   final String assigneeId;
   final String assigneeName;
   final List<String> attachmentUrls;
+  final String? holidayName;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -108,6 +109,7 @@ class Task {
     required this.assigneeId,
     required this.assigneeName,
     this.attachmentUrls = const [],
+    this.holidayName,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -118,6 +120,8 @@ class Task {
     if (isCompleted) return false;
     return dueDate.isBefore(DateTime.now());
   }
+
+  bool get isDueOnHoliday => holidayName != null && holidayName!.isNotEmpty;
 
   // copy with new fields
   Task copyWith({
@@ -132,6 +136,8 @@ class Task {
     String? assigneeId,
     String? assigneeName,
     List<String>? attachmentUrls,
+    String? holidayName,
+    bool clearHolidayName = false,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -147,6 +153,7 @@ class Task {
       assigneeId: assigneeId ?? this.assigneeId,
       assigneeName: assigneeName ?? this.assigneeName,
       attachmentUrls: attachmentUrls ?? this.attachmentUrls,
+      holidayName: clearHolidayName ? null : (holidayName ?? this.holidayName),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -165,6 +172,7 @@ class Task {
       'assigneeId': assigneeId,
       'assigneeName': assigneeName,
       'attachmentUrls': attachmentUrls,
+      if (holidayName != null) 'holidayName': holidayName,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -189,6 +197,7 @@ class Task {
       assigneeId: data['assigneeId'] as String? ?? '',
       assigneeName: data['assigneeName'] as String? ?? 'Unassigned',
       attachmentUrls: List<String>.from(data['attachmentUrls'] as List? ?? []),
+      holidayName: data['holidayName'] as String?,
       createdAt: createdTs?.toDate() ?? DateTime.now(),
       updatedAt: updatedTs?.toDate() ?? DateTime.now(),
     );

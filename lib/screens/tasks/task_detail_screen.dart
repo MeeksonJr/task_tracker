@@ -348,29 +348,116 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen>
                       },
                     ),
                     const SizedBox(height: 8),
-                    Row(
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Icon(Icons.person_pin_outlined, size: 16),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Assignee: ${liveTask.assigneeName}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              liveTask.isUnassigned
+                                  ? Icons.lock_open_outlined
+                                  : Icons.person_pin_outlined,
+                              size: 16,
+                              color: liveTask.isUnassigned
+                                  ? Colors.purple
+                                  : theme.colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              liveTask.isUnassigned
+                                  ? 'Assignee: Open / Unassigned'
+                                  : 'Assignee: ${liveTask.assigneeName}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: liveTask.isUnassigned
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: liveTask.isUnassigned
+                                    ? Colors.purple
+                                    : theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        const Icon(Icons.edit_note, size: 16),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Creator: ${liveTask.creatorName}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.edit_note, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Creator: ${liveTask.creatorName}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                    if (liveTask.isUnassigned && !liveTask.isCompleted) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.purple.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.lock_open_outlined, color: Colors.purple.shade700, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Open Task',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: Colors.purple.shade900,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Available for anyone to claim',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.purple.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            FilledButton.icon(
+                              onPressed: () async {
+                                final success = await ref
+                                    .read(taskControllerProvider.notifier)
+                                    .claimTask(liveTask);
+                                if (success && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Task claimed! Assigned to you.'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.person_add_alt_1, size: 16),
+                              label: const Text('Claim'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.purple,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

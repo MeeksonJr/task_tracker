@@ -273,33 +273,93 @@ class TaskCard extends ConsumerWidget {
                   },
                 ),
 
-                // assignee chip
+                // assignee / open task chip
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
+                    color: task.isUnassigned
+                        ? Colors.purple.withValues(alpha: 0.15)
+                        : theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(6),
+                    border: task.isUnassigned
+                        ? Border.all(color: Colors.purple.shade300, width: 0.5)
+                        : null,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.person_outline,
+                        task.isUnassigned
+                            ? Icons.lock_open_outlined
+                            : Icons.person_outline,
                         size: 12,
-                        color: theme.colorScheme.outline,
+                        color: task.isUnassigned
+                            ? Colors.purple.shade700
+                            : theme.colorScheme.outline,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        task.assigneeName,
+                        task.isUnassigned ? 'Open Task' : task.assigneeName,
                         style: TextStyle(
                           fontSize: 11,
-                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: task.isUnassigned
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: task.isUnassigned
+                              ? Colors.purple.shade700
+                              : theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
                   ),
                 ),
+
+                // quick claim button on card for unassigned tasks
+                if (task.isUnassigned && !task.isCompleted)
+                  InkWell(
+                    onTap: () async {
+                      final success = await ref
+                          .read(taskControllerProvider.notifier)
+                          .claimTask(task);
+                      if (success && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Task claimed! Assigned to you.'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.person_add_alt_1,
+                            size: 12,
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Claim',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ],

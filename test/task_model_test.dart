@@ -47,5 +47,34 @@ void main() {
       expect(TaskStatus.fromString('completed'), TaskStatus.completed);
       expect(TaskStatus.fromString(null), TaskStatus.todo);
     });
+
+    test('Task correctly recognizes unassigned / open status and claiming', () {
+      final unassignedTask = Task(
+        id: '2',
+        title: 'Open Bug Fix',
+        description: 'Anyone can pick this up',
+        priority: TaskPriority.medium,
+        status: TaskStatus.todo,
+        dueDate: DateTime.now().add(const Duration(days: 3)),
+        creatorId: 'lead1',
+        creatorName: 'Team Lead',
+        assigneeId: '',
+        assigneeName: 'Unassigned',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      expect(unassignedTask.isUnassigned, isTrue);
+
+      // claiming the task
+      final claimedTask = unassignedTask.copyWith(
+        assigneeId: 'member5',
+        assigneeName: 'Jane Developer',
+      );
+
+      expect(claimedTask.isUnassigned, isFalse);
+      expect(claimedTask.assigneeId, 'member5');
+      expect(claimedTask.assigneeName, 'Jane Developer');
+    });
   });
 }

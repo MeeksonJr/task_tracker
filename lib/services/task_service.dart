@@ -39,7 +39,9 @@ class TaskService {
             userId: task.creatorId,
             userName: task.creatorName,
             type: ActivityType.created,
-            details: 'Created task and assigned to ${task.assigneeName}',
+            details: task.isUnassigned
+                ? 'Created open task (unassigned)'
+                : 'Created task and assigned to ${task.assigneeName}',
             timestamp: now,
           ).toMap(),
         );
@@ -88,6 +90,30 @@ class TaskService {
             details: newStatus == TaskStatus.completed
                 ? 'Marked task as completed'
                 : 'Reopened task',
+            timestamp: now,
+          ).toMap(),
+        );
+  }
+
+  // claim or self-assign an open task
+  Future<void> claimTask(Task task, {required String userId, required String userName}) async {
+    final now = DateTime.now();
+    final updated = task.copyWith(
+      assigneeId: userId,
+      assigneeName: userName,
+      updatedAt: now,
+    );
+    await _tasksRef.doc(task.id).update(updated.toMap());
+
+    // log assignment activity
+    await _tasksRef.doc(task.id).collection('activities').add(
+          TaskActivity(
+            id: '',
+            taskId: task.id,
+            userId: userId,
+            userName: userName,
+            type: ActivityType.assigned,
+            details: '$userName claimed this task',
             timestamp: now,
           ).toMap(),
         );

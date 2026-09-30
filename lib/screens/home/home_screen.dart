@@ -146,26 +146,45 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
 
-            // segmented tabs: My Tasks, Assigned by Me, Completed
+            // segmented tabs: My Tasks, Open, Assigned by Me, Completed
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: SegmentedButton<TaskTab>(
+                showSelectedIcon: false,
+                style: const ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  padding: WidgetStatePropertyAll(
+                    EdgeInsets.symmetric(horizontal: 4),
+                  ),
+                ),
                 segments: [
                   ButtonSegment(
                     value: TaskTab.myTasks,
-                    label: Text('Mine (${counts[TaskTab.myTasks] ?? 0})'),
-                    icon: const Icon(Icons.assignment_ind_outlined),
+                    label: Text(
+                      'Mine (${counts[TaskTab.myTasks] ?? 0})',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  ButtonSegment(
+                    value: TaskTab.openTasks,
+                    label: Text(
+                      'Open (${counts[TaskTab.openTasks] ?? 0})',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ),
                   ButtonSegment(
                     value: TaskTab.assignedByMe,
-                    label:
-                        Text('Assigned (${counts[TaskTab.assignedByMe] ?? 0})'),
-                    icon: const Icon(Icons.outbox_outlined),
+                    label: Text(
+                      'Assigned (${counts[TaskTab.assignedByMe] ?? 0})',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ),
                   ButtonSegment(
                     value: TaskTab.completed,
-                    label: Text('Done (${counts[TaskTab.completed] ?? 0})'),
-                    icon: const Icon(Icons.check_circle_outline),
+                    label: Text(
+                      'Done (${counts[TaskTab.completed] ?? 0})',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ),
                 ],
                 selected: {activeTab},
@@ -192,7 +211,9 @@ class HomeScreen extends ConsumerWidget {
                                 Icon(
                                   activeTab == TaskTab.completed
                                       ? Icons.done_all
-                                      : Icons.task_alt,
+                                      : activeTab == TaskTab.openTasks
+                                          ? Icons.lock_open
+                                          : Icons.task_alt,
                                   size: 48,
                                   color: theme.colorScheme.outline,
                                 ),
@@ -200,9 +221,11 @@ class HomeScreen extends ConsumerWidget {
                                 Text(
                                   activeTab == TaskTab.completed
                                       ? 'No completed tasks yet'
-                                      : activeTab == TaskTab.assignedByMe
-                                          ? 'No tasks assigned by you'
-                                          : 'No tasks assigned to you',
+                                      : activeTab == TaskTab.openTasks
+                                          ? 'No open tasks available'
+                                          : activeTab == TaskTab.assignedByMe
+                                              ? 'No tasks assigned by you'
+                                              : 'No tasks assigned to you',
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant,
                                   ),

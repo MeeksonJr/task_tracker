@@ -116,6 +116,11 @@ class Task {
 
   bool get isCompleted => status == TaskStatus.completed;
 
+  bool get isUnassigned =>
+      assigneeId.isEmpty ||
+      assigneeId.toLowerCase() == 'unassigned' ||
+      assigneeName.toLowerCase() == 'unassigned';
+
   bool get isOverdue {
     if (isCompleted) return false;
     return dueDate.isBefore(DateTime.now());

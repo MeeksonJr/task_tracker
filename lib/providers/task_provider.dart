@@ -9,6 +9,7 @@ import 'notification_provider.dart';
 // task tabs for dashboard
 enum TaskTab {
   myTasks,
+  openTasks,
   assignedByMe,
   completed;
 
@@ -16,6 +17,8 @@ enum TaskTab {
     switch (this) {
       case TaskTab.myTasks:
         return 'My Tasks';
+      case TaskTab.openTasks:
+        return 'Open Tasks';
       case TaskTab.assignedByMe:
         return 'Assigned by Me';
       case TaskTab.completed:
@@ -83,6 +86,11 @@ final filteredTasksProvider = Provider<List<Task>>((ref) {
           .where((t) => t.assigneeId == currentUserId && !t.isCompleted)
           .toList();
       break;
+    case TaskTab.openTasks:
+      tabTasks = allTasks
+          .where((t) => t.isUnassigned && !t.isCompleted)
+          .toList();
+      break;
     case TaskTab.assignedByMe:
       tabTasks = allTasks
           .where((t) => t.creatorId == currentUserId && !t.isCompleted)
@@ -120,6 +128,9 @@ final taskCountsProvider = Provider<Map<TaskTab, int>>((ref) {
   return {
     TaskTab.myTasks: allTasks
         .where((t) => t.assigneeId == currentUserId && !t.isCompleted)
+        .length,
+    TaskTab.openTasks: allTasks
+        .where((t) => t.isUnassigned && !t.isCompleted)
         .length,
     TaskTab.assignedByMe: allTasks
         .where((t) => t.creatorId == currentUserId && !t.isCompleted)
@@ -188,6 +199,34 @@ class TaskController extends Notifier<AsyncValue<void>> {
       await _service.deleteTask(taskId);
       // remove scheduled notification
       await _notifications.cancelTaskReminder(taskId);
+      state = const AsyncValue.data(null);
+      return true;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      return false;
+    }
+  }
+
+  // claim an open task for the current logged-in user
+  Future<bool> claimTask(Task task) async {
+    state = const AsyncValue.loading();
+    try {
+      final currentUser = ref.read(currentUserProfileProvider).value;
+      if (currentUser == null) throw Exception('User not logged in');
+
+      await _service.claimTask(
+        task,
+        userId: currentUser.id,
+        userName: currentUser.displayName,
+      );
+
+      // schedule deadline reminder for the new assignee
+      final claimedTask = task.copyWith(
+        assigneeId: currentUser.id,
+        assigneeName: currentUser.displayName,
+      );
+      await _notifications.scheduleTaskReminder(claimedTask);
+
       state = const AsyncValue.data(null);
       return true;
     } catch (e, st) {

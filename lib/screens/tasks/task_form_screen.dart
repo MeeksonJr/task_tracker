@@ -123,7 +123,9 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
     if (currentUser == null) return;
 
     final assigneeId = _selectedAssigneeId ?? currentUser.id;
-    final assigneeName = _selectedAssigneeName ?? currentUser.displayName;
+    final assigneeName = (assigneeId.isEmpty || assigneeId == 'unassigned')
+        ? 'Unassigned'
+        : (_selectedAssigneeName ?? currentUser.displayName);
 
     // create a placeholder task to get/use the ID for upload paths
     final taskId = widget.taskToEdit?.id ?? '';
@@ -344,7 +346,7 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
                     final currentUid =
                         ref.watch(authStateProvider).value?.uid;
 
-                    // set initial assignee to self if null
+                    // set initial assignee to self if null and not editing
                     if (_selectedAssigneeId == null && users.isNotEmpty) {
                       final self = users.firstWhere(
                         (u) => u.id == currentUid,
@@ -354,28 +356,62 @@ class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
                       _selectedAssigneeName = self.displayName;
                     }
 
+                    // if editing an unassigned task, ensure empty string is matched
+                    final currentValue = (_selectedAssigneeId == null ||
+                            _selectedAssigneeId == 'unassigned' ||
+                            _selectedAssigneeId!.isEmpty)
+                        ? ''
+                        : _selectedAssigneeId;
+
                     return DropdownButtonFormField<String>(
-                      initialValue: _selectedAssigneeId,
+                      initialValue: currentValue,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.person_outline),
                       ),
-                      items: users.map((u) {
-                        final isSelf = u.id == currentUid;
-                        return DropdownMenuItem<String>(
-                          value: u.id,
-                          child: Text(
-                            '${u.displayName} (${u.role.label})${isSelf ? ' - You' : ''}',
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: '',
+                          child: Row(
+                            children: [
+                              Icon(Icons.lock_open_outlined,
+                                  size: 18, color: Colors.purple),
+                              SizedBox(width: 8),
+                              Text(
+                                'Unassigned (Open Task)',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.purple,
+                                ),
+                              ),
+                            ],
                           ),
-                        );
-                      }).toList(),
+                        ),
+                        ...users.map((u) {
+                          final isSelf = u.id == currentUid;
+                          return DropdownMenuItem<String>(
+                            value: u.id,
+                            child: Text(
+                              '${u.displayName} (${u.role.label})${isSelf ? ' - You' : ''}',
+                            ),
+                          );
+                        }),
+                      ],
                       onChanged: (newId) {
                         if (newId == null) return;
-                        final matched = users.firstWhere((u) => u.id == newId);
-                        setState(() {
-                          _selectedAssigneeId = matched.id;
-                          _selectedAssigneeName = matched.displayName;
-                        });
+                        if (newId.isEmpty) {
+                          setState(() {
+                            _selectedAssigneeId = '';
+                            _selectedAssigneeName = 'Unassigned';
+                          });
+                        } else {
+                          final matched =
+                              users.firstWhere((u) => u.id == newId);
+                          setState(() {
+                            _selectedAssigneeId = matched.id;
+                            _selectedAssigneeName = matched.displayName;
+                          });
+                        }
                       },
                     );
                   },
